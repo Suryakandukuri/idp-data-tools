@@ -36,17 +36,8 @@ class Variable(BaseModel):
     # postgres datatype
     data_type: PostgresDType
     measurement_unit:  Optional[str] = None
-    formula:  Optional[str] = None
-    # variable category (variable selection / parent variable)
-    category:  Optional[str] = None
-    unit_conversion:  Optional[str] = None
-    # variable parent (is used by some other variable)
-    dependent_variable:  Optional[str] = None
-    # original / derived
-    is_derived: bool = False
-    # changing unit / constant unit
-    unit_varies: bool = False
-    visual_exclude: bool = False
+    # constant unit / changing unit
+    unit_type:  Optional[str] = None
 
     @validator("name", allow_reuse=True)
     def is_alphanumeric(cls, value):

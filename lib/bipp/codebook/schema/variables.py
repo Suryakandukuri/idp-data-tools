@@ -12,14 +12,7 @@ codebook_columns_v0 = [
     'variable description',
     'variable type',
     'unit of measurement',
-    'constant unit / changing unit',
-    'formula',
-    'unit reference',
-    'parent variable',
-    'unit conversion',
-    'original / derived',
-    'variable parent',
-    'visual exclude'
+    'unit type',
 ]
 VariableType = Literal[
     "text",
@@ -47,14 +40,7 @@ CodebookSchemaV0 = pa.DataFrameSchema(
             ])
         ]),
         "unit of measurement": pa.Column(str, nullable=True, default=""),
-        "constant unit / changing unit": pa.Column(str, nullable=True, default=""),
-        "formula": pa.Column(str, nullable=True, default=""),
-        "unit reference": pa.Column(str, nullable=True, default=""),
-        "parent variable": pa.Column(str, nullable=True, default=""),
-        "unit conversion": pa.Column(str, nullable=True, default=""),
-        "original / derived": pa.Column(str, nullable=True, default=""),
-        "variable parent": pa.Column(str, nullable=True, default=""),
-        "visual exclude": pa.Column(bool, nullable=True, coerce=True, default=False, required=False),
+        "unit type": pa.Column(str, nullable=True, default=""),
     },
     strict="filter",
 )
@@ -72,13 +58,7 @@ CodebookSchemaV1 = pa.DataFrameSchema(
             pa.Check.isin(VariableType.__args__)
         ]),
         "measurement_unit": pa.Column(str, nullable=True, default=""),
-        "formula": pa.Column(str, nullable=True, default=""),
-        "category": pa.Column(str, nullable=True, default=""),
-        "unit_conversion": pa.Column(str, nullable=True, default=""),
-        "dependent_variable": pa.Column(str, nullable=True, default=""),
-        "is_derived": pa.Column(bool, coerce=True, nullable=True, default=""),
-        "unit_varies": pa.Column(bool, coerce=True, nullable=True, default=""),
-        "visual_exclude": pa.Column(bool, nullable=True, coerce=True, default=False, required=False),
+        "unit_type": pa.Column(str, nullable=True, default=""),
     },
     strict="filter",
 )
@@ -86,21 +66,13 @@ CodebookSchemaV1 = pa.DataFrameSchema(
 
 @pa.check_io(df=CodebookSchemaV0, out=CodebookSchemaV1)
 def cast_codebook(df: pd.DataFrame):
-    return df \
-        .drop("unit reference", axis=1) \
-        .rename(columns={
-            "variable name": "name",
-            "variable description": "description",
-            "variable type": "data_type",
-            "unit of measurement": "measurement_unit",
-            "constant unit / changing unit": "unit_varies",
-            "formula": "formula",
-            "parent variable": "category",
-            "unit conversion": "unit_conversion",
-            "original / derived": "is_derived",
-            "variable parent": "dependent_variable",
-            "visual exclude": "visual_exclude",
-        })
+    return df.rename(columns={
+        "variable name": "name",
+        "variable description": "description",
+        "variable type": "data_type",
+        "unit of measurement": "measurement_unit",
+        "unit type": "unit_type",
+    })
 
 
 class Variable(BaseModel):
@@ -111,17 +83,8 @@ class Variable(BaseModel):
     # postgres datatype
     data_type: PostgresDType
     measurement_unit: Optional[str] = None
-    formula:  Optional[str] = None
-    # variable category (variable selection / parent variable)
-    category:  Optional[str] = None
-    unit_conversion:  Optional[str] = None
-    # variable parent (is used by some other variable)
-    dependent_variable:  Optional[str] = None
-    # original / derived
-    is_derived: bool = False
-    # changing unit / constant unit
-    unit_varies: bool = False
-    visual_exclude: bool = False
+    # constant unit / changing unit
+    unit_type: Optional[str] = None
 
     @validator("name", allow_reuse=True)
     def is_alphanumeric(cls, value):
@@ -147,20 +110,12 @@ class Variable(BaseModel):
     def to_excel_codebook(cls, v: List):
         v = [i.dict() for i in v]
         def get_values(k): return [i[k] for i in v]
-        def as_str(l): return [str(i) for i in l]
         df = pd.DataFrame({
             "variable name": get_values("name"),
             "variable description": get_values("description"),
             "variable type": get_values("data_type"),
             "unit of measurement": get_values("measurement_unit"),
-            "constant unit / changing unit": as_str(get_values("unit_varies")),
-            "formula": get_values("formula"),
-            "unit reference": ["" for _ in range(len(v))],
-            "parent variable": get_values("category"),
-            "unit conversion": get_values("unit_conversion"),
-            "original / derived": as_str(get_values("is_derived")),
-            "variable parent": get_values("dependent_variable"),
-            "visual exclude": get_values("visual_exclude"),
+            "unit type": get_values("unit_type"),
         })
         df = df.replace("nan", None)
         df.loc[max(df.index)+1,:] = None
@@ -168,6 +123,6 @@ class Variable(BaseModel):
         df.iloc[0, :] = df.columns.str.title()
         df.loc[max(df.index)+1,:] = None
         df = df.shift()
-        df.iloc[0, 0] = "Dataset Variables & Formulas Used"
+        df.iloc[0, 0] = "Dataset Variables"
         return df
 

@@ -59,9 +59,7 @@ def get_similar_or_itself(name: str, candidates, **kwargs):
 
 # %%
 codebook_columns = ['variable name', 'variable description', 'variable type',
-                    'unit of measurement', 'constant unit / changing unit', 'formula',
-                    'unit reference', 'parent variable', 'unit conversion',
-                    'original / derived', 'variable parent', 'visual exclude']
+                    'unit of measurement', 'unit type']
 variable_types = ["text", "numeric", "date", "region", "categorical"]
 metadata_fields = ["domain", "dataset name", "granularity level", "frequency", "source name", "source link", "data retrieval date",
                    "data last updated", "data extraction page", "about", "methodology", "resource", "data insights", "tags", "similar datasets","package description"]
@@ -241,12 +239,8 @@ def critique_codebook(df: pd.DataFrame, test_results: List[TestResult] = list())
         partial(get_similar_or_itself, candidates=codebook_columns)).tolist(), codebook_columns))
     if len(missing_cols) != 0:
         for col in missing_cols:
-            if col == "visual exclude":
-                test_results.append(TestResult(TestResultType.WARNING,
-                                               f"Please add 'visual exclude' column in 'codebook' sheet."))
-            else:
-                test_results.append(TestResult(TestResultType.ERROR,
-                                               f"Couldn't find '{col}' in 'codebook' sheet."))
+            test_results.append(TestResult(TestResultType.ERROR,
+                                           f"Couldn't find '{col}' in 'codebook' sheet."))
     else:
         test_results.append(TestResult(TestResultType.SUCCESS,
                                        f"All the required columns are present."))
